@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 // middleware
@@ -26,11 +26,46 @@ async function run() {
 
         // jobs related api
         const jobsCollection = client.db("jobportal").collection("jobs");
+        const jobApplicationCollection = client.db("jobportal").collection("job_applications");
 
         // read jobs data
         app.get("/jobs", async (req, res) => {
             const cursor = jobsCollection.find();
             const result = await cursor.toArray();
+            res.send(result);
+        })
+
+        // read single job data
+        app.get("/jobs/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await jobsCollection.findOne(query);
+            res.send(result);
+        })
+
+        // job application collection
+        app.post("/job-applications", async (req, res) => {
+            const application = req.body;
+            const result = await jobApplicationCollection.insertOne(application);
+            res.send(result);
+        })
+
+        // find applicant job data by email
+        app.get("/job-applications", async (req, res) => {
+            const email = req.query.email;
+            const query = { applicant_email: email };
+            const result = await jobApplicationCollection.find(query).toArray();
+
+            // optional way to find
+            for (const application of result) {
+                const query = { _id: new ObjectId(application.job_id) };
+                const result = await jobsCollection.findOne(query);
+                if (result) {
+                    application.title = result.title;
+                    application.company = result.company;
+                    application.company_logo = result.company_logo;
+                }
+            }
             res.send(result);
         })
 
