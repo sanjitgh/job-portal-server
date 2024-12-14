@@ -28,9 +28,22 @@ async function run() {
         const jobsCollection = client.db("jobportal").collection("jobs");
         const jobApplicationCollection = client.db("jobportal").collection("job_applications");
 
+        // create jobs
+        app.post("/jobs", async (req, res) => {
+            const job = req.body;
+            const result = await jobsCollection.insertOne(job);
+            res.send(result);
+        })
+
         // read jobs data
         app.get("/jobs", async (req, res) => {
-            const cursor = jobsCollection.find();
+            const email = req.query.email;
+            let query = {};
+            if (email) {
+                query = { hr_email: email }
+            }
+
+            const cursor = jobsCollection.find(query);
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -43,7 +56,7 @@ async function run() {
             res.send(result);
         })
 
-        // job application collection
+        // create job application collection
         app.post("/job-applications", async (req, res) => {
             const application = req.body;
             const result = await jobApplicationCollection.insertOne(application);
@@ -67,6 +80,14 @@ async function run() {
                 }
             }
             res.send(result);
+        })
+
+        // delete applicant data
+        app.delete("/job-applications/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const job = await jobApplicationCollection.deleteOne(query);
+            res.send(job);
         })
 
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
