@@ -16,6 +16,21 @@ app.use(express.json());
 app.use(cookieParser())
 
 
+const verify = (req, res, next) => {
+    const token = req?.cookies?.token
+
+    if (!token) {
+        return res.status(401).send({ message: "Unauthrized access" })
+    }
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: "Unauthrized access" })
+        }
+        req.user = decoded;
+        next();
+    })
+}
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rwhf0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -85,9 +100,13 @@ async function run() {
         })
 
         // find applicant job data by email
-        app.get("/job-applications", async (req, res) => {
+        app.get("/job-applications", verify, async (req, res) => {
             const email = req.query.email;
             const query = { applicant_email: email };
+
+            if(req.user.email !== req.query.email){
+                return res.status(403).send({message: 'forbidden access'})
+            }
             const result = await jobApplicationCollection.find(query).toArray();
 
             // optional way to find
