@@ -9,13 +9,27 @@ require('dotenv').config();
 
 // middleware
 app.use(cors({
-    origin: ['http://localhost:5174'],
+    origin: ['http://localhost:5173'],
     credentials: true,
 }));
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 
+const veryfyToken = (req, res, next) => {
+    const token = req.cookies?.token;
+    if (!token) {
+        return res.status(401).send({ message: "Unauthorized Access" })
+    }
 
+    // verify the token
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: "Unauthorized Access" })
+        }
+        req.user = decoded;
+        next()
+    })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rwhf0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -38,7 +52,7 @@ async function run() {
         // job related APIs
         app.post('/jwt', async (req, res) => {
             const user = req.body;
-            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '5h' });
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
 
             res
                 .cookie('token', token, {
@@ -92,9 +106,15 @@ async function run() {
         })
 
         // find applicant job data by email
-        app.get("/job-applications", async (req, res) => {
+        app.get("/job-applications", veryfyToken, async (req, res) => {
             const email = req.query.email;
             const query = { applicant_email: email };
+
+            // verify the token email and query email
+
+            if (req.user.email !== req.query.email) {
+                return res.status(403).send({message: 'forbidden access'})
+            }
             const result = await jobApplicationCollection.find(query).toArray();
 
             // optional way to find
