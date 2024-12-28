@@ -86,15 +86,32 @@ async function run() {
         // read jobs data
         app.get("/jobs", async (req, res) => {
             const email = req.query.email;
+            const sort = req.query?.sort;
+
+
             let query = {};
+            let sortQuery = {};
             if (email) {
                 query = { hr_email: email }
             }
 
-            const cursor = jobsCollection.find(query);
+            if (sort === 'true') {
+                sortQuery = {
+                    "salaryRange.min": -1
+                }
+            }
+            const cursor = jobsCollection.find(query).sort(sortQuery);
             const result = await cursor.toArray();
             res.send(result);
         })
+
+
+        app.get("/hot-jobs", async (req, res) => {
+            const result = await jobsCollection.find().limit(3).toArray();
+            res.send(result);
+        })
+
+
 
         // read single job data
         app.get("/jobs/:id", async (req, res) => {
