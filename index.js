@@ -9,7 +9,11 @@ require('dotenv').config();
 
 // middleware
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: [
+        'http://localhost:5173',
+        'https://job-portal-2426c.web.app',
+        'https://job-portal-2426c.firebaseapp.com'
+    ],
     credentials: true,
 }));
 app.use(express.json());
@@ -57,7 +61,8 @@ async function run() {
             res
                 .cookie('token', token, {
                     httpOnly: true,
-                    secure: false, // only for development
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
                 })
                 .send({ success: true })
         })
@@ -65,7 +70,8 @@ async function run() {
         app.post('/logout', (req, res) => {
             res.clearCookie('token', {
                 httpOnly: true,
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
             })
                 .send({ success: true })
         })
@@ -113,7 +119,7 @@ async function run() {
             // verify the token email and query email
 
             if (req.user.email !== req.query.email) {
-                return res.status(403).send({message: 'forbidden access'})
+                return res.status(403).send({ message: 'forbidden access' })
             }
             const result = await jobApplicationCollection.find(query).toArray();
 
@@ -138,7 +144,6 @@ async function run() {
             res.send(job);
         })
 
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
